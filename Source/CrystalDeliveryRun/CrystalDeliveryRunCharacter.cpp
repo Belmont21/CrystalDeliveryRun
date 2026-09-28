@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CrystalDeliveryRunCharacter.h"
+#include "CDRGameHUDWidget.h"
+#include "GameFramework/PlayerController.h"
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -11,6 +13,28 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "CrystalDeliveryRun.h"
+#include "CDRCrystal.h"
+
+void ACrystalDeliveryRunCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	APlayerController* PlayerController =
+		Cast<APlayerController>(GetController());
+
+	if (!IsValid(PlayerController))
+	{
+		return;
+	}
+
+	GameHUDWidget = CreateWidget<UCDRGameHUDWidget>(PlayerController);
+
+	if (IsValid(GameHUDWidget))
+	{
+		GameHUDWidget->AddToViewport();
+	}
+}
+
 
 ACrystalDeliveryRunCharacter::ACrystalDeliveryRunCharacter()
 {
@@ -127,7 +151,63 @@ void ACrystalDeliveryRunCharacter::DoJumpStart()
 }
 
 void ACrystalDeliveryRunCharacter::DoJumpEnd()
+
 {
 	// signal the character to stop jumping
 	StopJumping();
 }
+	
+	bool ACrystalDeliveryRunCharacter::TryPickUpCrystal(ACDRCrystal* Crystal)
+	{
+		if (!IsValid(Crystal) || IsCarryingCrystal())
+		{
+			return false;
+		}
+
+
+		CarriedCrystal = Crystal;
+
+
+		Crystal->SetActorEnableCollision(false);
+		Crystal->AttachToComponent(
+			GetRootComponent(),
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+
+
+		Crystal->SetActorRelativeLocation(FVector(100.0f, 0.0f, 80.0f));
+
+
+		return true;
+	}
+
+
+	bool ACrystalDeliveryRunCharacter::IsCarryingCrystal() const
+	{
+		return IsValid(CarriedCrystal);
+	}
+
+void ACrystalDeliveryRunCharacter::DeliverCrystal()
+{
+	if (!IsCarryingCrystal())
+	{
+		return;
+	}
+
+	Score += CarriedCrystal->GetPointValue();
+	
+	if (IsValid(GameHUDWidget))
+	{
+		GameHUDWidget->SetScore(Score);
+	}
+
+	CarriedCrystal->Destroy();
+	CarriedCrystal = nullptr;
+
+	
+}
+
+int32 ACrystalDeliveryRunCharacter::GetScore() const
+{
+	return Score;
+}
+

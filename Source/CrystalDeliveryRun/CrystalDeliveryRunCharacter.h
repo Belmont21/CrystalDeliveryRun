@@ -11,6 +11,8 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
+class ACDRCrystal;
+class UCDRGameHUDWidget;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -52,7 +54,12 @@ protected:
 public:
 
 	/** Constructor */
-	ACrystalDeliveryRunCharacter();	
+	ACrystalDeliveryRunCharacter();
+	virtual void BeginPlay() override;
+	bool TryPickUpCrystal(ACDRCrystal* Crystal);
+	bool IsCarryingCrystal() const;
+	void DeliverCrystal();
+	int32 GetScore() const;
 
 protected:
 
@@ -92,5 +99,14 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	
+private:
+	UPROPERTY()
+	TObjectPtr<ACDRCrystal> CarriedCrystal;
+	UPROPERTY()
+	int32 Score = 0;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<UCDRGameHUDWidget> GameHUDWidget;
 };
 
