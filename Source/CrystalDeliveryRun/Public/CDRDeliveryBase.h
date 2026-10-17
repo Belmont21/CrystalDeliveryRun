@@ -15,7 +15,9 @@ class CRYSTALDELIVERYRUN_API ACDRDeliveryBase : public AActor
 
 public:
 	ACDRDeliveryBase();
-
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Quest")
+	void OnCrystalDelivered();
 protected:
 	UFUNCTION()
 	void HandleBaseOverlap(

@@ -47,9 +47,10 @@ void ACDRDeliveryBase::HandleBaseOverlap(
 	ACrystalDeliveryRunCharacter* PlayerCharacter =
 		Cast<ACrystalDeliveryRunCharacter>(OtherActor);
 
-	if (IsValid(PlayerCharacter))
+	if (IsValid(PlayerCharacter) && PlayerCharacter->IsCarryingCrystal())
 	{
 		PlayerCharacter->DeliverCrystal();
+		OnCrystalDelivered();
 	}
 }
 
