@@ -25,6 +25,7 @@ public:
 	ACDRCrystal();
 
 	int32 GetPointValue() const;
+	ECDRCrystalRarity GetRarity() const;
 	
 protected:
 	UFUNCTION()

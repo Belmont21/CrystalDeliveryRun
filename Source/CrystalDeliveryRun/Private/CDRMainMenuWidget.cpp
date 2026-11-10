@@ -1,115 +1,326 @@
 #include "CDRMainMenuWidget.h"
-#include "GameFramework/PlayerController.h"
+
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/EditableTextBox.h"
+#include "Components/Image.h"
+#include "Components/ScaleBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
-#include "Components/VerticalBox.h"
-#include "Components/VerticalBoxSlot.h"
+#include "Engine/Texture2D.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Multiplayer/CDRGameInstance.h"
+#include "Sound/SoundBase.h"
 #include "Styling/CoreStyle.h"
+#include "UObject/ConstructorHelpers.h"
+#include "Brushes/SlateColorBrush.h"
+
+UCDRMainMenuWidget::UCDRMainMenuWidget(
+   const FObjectInitializer& ObjectInitializer)
+   : Super(ObjectInitializer)
+{
+   static ConstructorHelpers::FObjectFinder<USoundBase> ClickSoundAsset(
+      TEXT("/Game/Audio/sonido_de_clic.sonido_de_clic"));
+
+   if (ClickSoundAsset.Succeeded())
+   {
+      ClickSound = ClickSoundAsset.Object;
+   }
+
+   static ConstructorHelpers::FObjectFinder<UTexture2D> BackgroundAsset(
+      TEXT("/Game/UI/T_MenuPrincipal.T_MenuPrincipal"));
+
+   if (BackgroundAsset.Succeeded())
+   {
+      MenuBackground = BackgroundAsset.Object;
+   }
+}
 
 TSharedRef<SWidget> UCDRMainMenuWidget::RebuildWidget()
 {
-	UCanvasPanel* RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
-		UCanvasPanel::StaticClass(), TEXT("RootCanvas"));
+   
 
-	WidgetTree->RootWidget = RootCanvas;
+   UScaleBox* ScaleBox = WidgetTree->ConstructWidget<UScaleBox>(
+      UScaleBox::StaticClass(),
+      TEXT("MenuScaleBox"));
 
-	UVerticalBox* MenuBox = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(), TEXT("MenuBox"));
+   ScaleBox->SetStretch(EStretch::ScaleToFit);
+   WidgetTree->RootWidget = ScaleBox;
 
-	UCanvasPanelSlot* MenuSlot = RootCanvas->AddChildToCanvas(MenuBox);
-	MenuSlot->SetAnchors(FAnchors(0.5f, 0.5f));
-	MenuSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-	MenuSlot->SetAutoSize(true);
+   USizeBox* DesignSize = WidgetTree->ConstructWidget<USizeBox>(
+      USizeBox::StaticClass(),
+      TEXT("MenuDesignSize"));
 
-	UTextBlock* TitleText = WidgetTree->ConstructWidget<UTextBlock>(
-		UTextBlock::StaticClass(), TEXT("TitleText"));
+   DesignSize->SetWidthOverride(1672.0f);
+   DesignSize->SetHeightOverride(941.0f);
+   ScaleBox->AddChild(DesignSize);
 
-	TitleText->SetText(FText::FromString(TEXT("CRYSTAL DELIVERY RUN")));
-	TitleText->SetFont(FCoreStyle::GetDefaultFontStyle("Bold", 42));
-	TitleText->SetJustification(ETextJustify::Center);
+   UCanvasPanel* RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+      UCanvasPanel::StaticClass(),
+      TEXT("RootCanvas"));
 
-	UVerticalBoxSlot* TitleSlot = MenuBox->AddChildToVerticalBox(TitleText);
-	TitleSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 40.0f));
-	TitleSlot->SetHorizontalAlignment(HAlign_Center);
+   DesignSize->AddChild(RootCanvas);
 
-	HostButton = WidgetTree->ConstructWidget<UButton>(
-		UButton::StaticClass(), TEXT("HostButton"));
+   // Fondo del menu - imagen temporal (hacer la definitivadespues)
 
-	UTextBlock* HostText = WidgetTree->ConstructWidget<UTextBlock>(
-		UTextBlock::StaticClass(), TEXT("HostText"));
+   UImage* BackgroundImage = WidgetTree->ConstructWidget<UImage>(
+      UImage::StaticClass(),
+      TEXT("BackgroundImage"));
 
-	HostText->SetText(FText::FromString(TEXT("HOST PARTIDA")));
-	HostText->SetColorAndOpacity(FSlateColor(FLinearColor(0.1f, 1.0f, 0.2f, 1.0f)));
-	HostText->SetFont(FCoreStyle::GetDefaultFontStyle("Regular", 24));
-	HostText->SetJustification(ETextJustify::Center);
+   if (IsValid(MenuBackground))
+   {
+      BackgroundImage->SetBrushFromTexture(MenuBackground, false);
+   }
 
-	HostButton->AddChild(HostText);
-	HostButton->OnClicked.AddDynamic(this, &UCDRMainMenuWidget::HandleHostClicked);
+   BackgroundImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 
-	USizeBox* HostSizeBox = WidgetTree->ConstructWidget<USizeBox>(
-		USizeBox::StaticClass(), TEXT("HostSizeBox"));
+   UCanvasPanelSlot* BackgroundSlot =
+      RootCanvas->AddChildToCanvas(BackgroundImage);
 
-	HostSizeBox->SetWidthOverride(360.0f);
-	HostSizeBox->SetHeightOverride(60.0f);
-	HostSizeBox->AddChild(HostButton);
+   BackgroundSlot->SetPosition(FVector2D(0.0f, 0.0f));
+   BackgroundSlot->SetSize(FVector2D(1672.0f, 941.0f));
+   BackgroundSlot->SetZOrder(0);
 
-	UVerticalBoxSlot* HostSlot = MenuBox->AddChildToVerticalBox(HostSizeBox);
-	HostSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
-	HostSlot->SetHorizontalAlignment(HAlign_Center);
+   // Boton transparente sobre HOST PARTIDA.
 
-	QuitButton = WidgetTree->ConstructWidget<UButton>(
-		UButton::StaticClass(), TEXT("QuitButton"));
+   HostButton = WidgetTree->ConstructWidget<UButton>(
+      UButton::StaticClass(),
+      TEXT("HostButton"));
 
-	UTextBlock* QuitText = WidgetTree->ConstructWidget<UTextBlock>(
-		UTextBlock::StaticClass(), TEXT("QuitText"));
+   HostButton->SetBackgroundColor(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
+   HostButton->OnClicked.AddDynamic(
+      this,
+      &UCDRMainMenuWidget::HandleHostClicked);
 
-	QuitText->SetText(FText::FromString(TEXT("SALIR")));
-	QuitText->SetColorAndOpacity(FSlateColor(FLinearColor(0.1f, 1.0f, 0.2f, 1.0f)));
-	QuitText->SetFont(FCoreStyle::GetDefaultFontStyle("Regular", 24));
-	QuitText->SetJustification(ETextJustify::Center);
+   UCanvasPanelSlot* HostSlot = RootCanvas->AddChildToCanvas(HostButton);
+   HostSlot->SetPosition(FVector2D(580.0f, 468.0f));
+   HostSlot->SetSize(FVector2D(525.0f, 82.0f));
+   HostSlot->SetZOrder(1);
 
-	QuitButton->AddChild(QuitText);
-	QuitButton->OnClicked.AddDynamic(this, &UCDRMainMenuWidget::HandleQuitClicked);
+   // Campo editable para INSERTAR IP.
+   
+   UImage* AddressBackdrop = WidgetTree->ConstructWidget<UImage>(
+   UImage::StaticClass(),
+   TEXT("AddressBackdrop"));
 
-	USizeBox* QuitSizeBox = WidgetTree->ConstructWidget<USizeBox>(
-		USizeBox::StaticClass(), TEXT("QuitSizeBox"));
+   AddressBackdrop->SetBrush(FSlateColorBrush(
+      FLinearColor(0.85f, 0.85f, 0.85f, 1.0f)));
 
-	QuitSizeBox->SetWidthOverride(360.0f);
-	QuitSizeBox->SetHeightOverride(60.0f);
-	QuitSizeBox->AddChild(QuitButton);
+   AddressBackdrop->SetVisibility(ESlateVisibility::HitTestInvisible);
 
-	UVerticalBoxSlot* QuitSlot = MenuBox->AddChildToVerticalBox(QuitSizeBox);
-	QuitSlot->SetHorizontalAlignment(HAlign_Center);
+   UCanvasPanelSlot* BackdropSlot =
+      RootCanvas->AddChildToCanvas(AddressBackdrop);
 
-	return Super::RebuildWidget();
+   BackdropSlot->SetPosition(FVector2D(748.0f, 574.0f));
+   BackdropSlot->SetSize(FVector2D(300.0f, 42.0f));
+   BackdropSlot->SetZOrder(1);
+
+
+   AddressInput = WidgetTree->ConstructWidget<UEditableTextBox>(
+      UEditableTextBox::StaticClass(),
+      TEXT("AddressInput"));
+
+   AddressInput->SetForegroundColor(FLinearColor::Black);
+   AddressInput->SetHintText(FText::FromString(TEXT("Insertar IP")));
+
+   FEditableTextBoxStyle AddressStyle = AddressInput->GetWidgetStyle();
+   AddressStyle.SetForegroundColor(FSlateColor(FLinearColor::Black));
+   AddressStyle.SetFocusedForegroundColor(FSlateColor(FLinearColor::Black));
+   AddressInput->SetWidgetStyle(AddressStyle);
+
+   UCanvasPanelSlot* AddressSlot = RootCanvas->AddChildToCanvas(AddressInput);
+   AddressSlot->SetPosition(FVector2D(748.0f, 574.0f));
+   AddressSlot->SetSize(FVector2D(300.0f, 42.0f));
+   AddressSlot->SetZOrder(2);
+
+   
+
+   JoinButton = WidgetTree->ConstructWidget<UButton>(
+      UButton::StaticClass(),
+      TEXT("JoinButton"));
+
+   JoinButton->SetBackgroundColor(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
+   JoinButton->OnClicked.AddDynamic(
+      this,
+      &UCDRMainMenuWidget::HandleJoinClicked);
+
+   UCanvasPanelSlot* JoinSlot = RootCanvas->AddChildToCanvas(JoinButton);
+   JoinSlot->SetPosition(FVector2D(585.0f, 638.0f));
+   JoinSlot->SetSize(FVector2D(505.0f, 70.0f));
+   JoinSlot->SetZOrder(1);
+
+   
+
+   QuitButton = WidgetTree->ConstructWidget<UButton>(
+      UButton::StaticClass(),
+      TEXT("QuitButton"));
+
+   QuitButton->SetBackgroundColor(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
+   QuitButton->OnClicked.AddDynamic(
+      this,
+      &UCDRMainMenuWidget::HandleQuitClicked);
+
+   UCanvasPanelSlot* QuitSlot = RootCanvas->AddChildToCanvas(QuitButton);
+   QuitSlot->SetPosition(FVector2D(585.0f, 720.0f));
+   QuitSlot->SetSize(FVector2D(495.0f, 70.0f));
+   QuitSlot->SetZOrder(1);
+
+   // Avisos del menu desde esta linea
+
+   MenuMessage = WidgetTree->ConstructWidget<UTextBlock>(
+      UTextBlock::StaticClass(),
+      TEXT("MenuMessage"));
+
+   MenuMessage->SetText(FText::GetEmpty());
+   MenuMessage->SetFont(FCoreStyle::GetDefaultFontStyle("Bold", 22));
+   MenuMessage->SetColorAndOpacity(FSlateColor(FLinearColor::Red));
+   MenuMessage->SetShadowColorAndOpacity(FLinearColor::Black);
+   MenuMessage->SetShadowOffset(FVector2D(2.0f, 2.0f));
+   MenuMessage->SetJustification(ETextJustify::Center);
+   MenuMessage->SetVisibility(ESlateVisibility::HitTestInvisible);
+
+   UCanvasPanelSlot* MessageSlot = RootCanvas->AddChildToCanvas(MenuMessage);
+   MessageSlot->SetPosition(FVector2D(380.0f, 792.0f));
+   MessageSlot->SetSize(FVector2D(912.0f, 32.0f));
+   MessageSlot->SetZOrder(2);
+
+   if (UWorld* World = GetWorld())
+   {
+      if (UCDRGameInstance* CDRGameInstance =
+         World->GetGameInstance<UCDRGameInstance>())
+      {
+         const FText NetworkError = CDRGameInstance->ConsumeNetworkError();
+
+         if (!NetworkError.IsEmpty() && IsValid(MenuMessage))
+         {
+            MenuMessage->SetText(NetworkError);
+         }
+      }
+   }
+
+   return Super::RebuildWidget();
 }
 
 void UCDRMainMenuWidget::HandleHostClicked()
 {
-	APlayerController* PlayerController = GetOwningPlayer();
+   PlayMenuClick();
 
-	if (IsValid(PlayerController))
-	{
-		FInputModeGameOnly InputMode;
-		PlayerController->SetInputMode(InputMode);
-		PlayerController->bShowMouseCursor = false;
-	}
+   APlayerController* PlayerController = GetOwningPlayer();
 
-	UGameplayStatics::OpenLevel(this, FName("L_Game"), true, TEXT("listen"));
+   if (IsValid(PlayerController))
+   {
+      FInputModeGameOnly InputMode;
+      PlayerController->SetInputMode(InputMode);
+      PlayerController->bShowMouseCursor = false;
+   }
+
+   UGameplayStatics::OpenLevel(
+      this,
+      FName("L_CrystalArena"),
+      true,
+      TEXT("listen"));
 }
 
+void UCDRMainMenuWidget::HandleJoinClicked()
+{
+   PlayMenuClick();
+
+   if (!IsValid(AddressInput))
+   {
+      return;
+   }
+
+   const FString Address = AddressInput->GetText().ToString().TrimStartAndEnd();
+
+   if (Address.IsEmpty())
+   {
+      if (IsValid(MenuMessage))
+      {
+         MenuMessage->SetText(
+            FText::FromString(TEXT("Escribí la IP del host.")));
+
+         if (UWorld* World = GetWorld())
+         {
+            World->GetTimerManager().SetTimer(
+               MenuMessageTimerHandle,
+               this,
+               &UCDRMainMenuWidget::ClearMenuMessage,
+               3.0f,
+               false);
+         }
+      }
+
+
+      return;
+   }
+
+   APlayerController* PlayerController = GetOwningPlayer();
+
+   if (IsValid(PlayerController))
+   {
+      if (IsValid(MenuMessage))
+      {
+         if (UWorld* World = GetWorld())
+         {
+            World->GetTimerManager().ClearTimer(MenuMessageTimerHandle);
+         }
+
+         MenuMessage->SetText(
+            FText::FromString(TEXT("Conectando...")));
+      }
+
+      PlayerController->ClientTravel(Address, TRAVEL_Absolute);
+   }
+}
 
 void UCDRMainMenuWidget::HandleQuitClicked()
 {
-	UKismetSystemLibrary::QuitGame(
-		this,
-		GetOwningPlayer(),
-		EQuitPreference::Quit,
-		false);
+   PlayMenuClick();
+
+   if (UWorld* World = GetWorld())
+   {
+      World->GetTimerManager().SetTimer(
+         QuitTimerHandle,
+         this,
+         &UCDRMainMenuWidget::QuitGameAfterClick,
+         0.3f,
+         false);
+   }
+}
+
+void UCDRMainMenuWidget::PlayMenuClick()
+{
+   if (IsValid(ClickSound))
+   {
+      UGameplayStatics::SpawnSound2D(
+         this,
+         ClickSound,
+         1.0f,
+         1.0f,
+         0.0f,
+         nullptr,
+         true,
+         true);
+   }
+}
+
+void UCDRMainMenuWidget::QuitGameAfterClick()
+{
+   UKismetSystemLibrary::QuitGame(
+      this,
+      GetOwningPlayer(),
+      EQuitPreference::Quit,
+      false);
+}
+void UCDRMainMenuWidget::ClearMenuMessage()
+{
+   if (IsValid(MenuMessage))
+   {
+      MenuMessage->SetText(FText::GetEmpty());
+   }
 }

@@ -3,10 +3,12 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Multiplayer/CDRMatchGameState.h"
 
 ACDRCrystal::ACDRCrystal()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
 
 	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
 	RootComponent = CollisionSphere;
@@ -58,6 +60,20 @@ int32 ACDRCrystal::GetPointValue() const
 	bool bFromSweep,
 	const FHitResult& SweepResult)
 	{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	ACDRMatchGameState* MatchGameState =
+   GetWorld()->GetGameState<ACDRMatchGameState>();
+
+	if (IsValid(MatchGameState) &&
+		MatchGameState->MatchPhase != ECDRMatchPhase::Playing)
+	{
+		return;
+	}
+
 		ACrystalDeliveryRunCharacter* PlayerCharacter =
 			Cast<ACrystalDeliveryRunCharacter>(OtherActor);
 
@@ -66,3 +82,7 @@ int32 ACDRCrystal::GetPointValue() const
 			PlayerCharacter->TryPickUpCrystal(this);
 		}
 	}
+ECDRCrystalRarity ACDRCrystal::GetRarity() const
+{
+	return Rarity;
+}

@@ -2,11 +2,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "TimerManager.h"
 #include "CDRDeliveryBase.generated.h"
 
 class UBoxComponent;
 class UStaticMeshComponent;
 class UPrimitiveComponent;
+class UPointLightComponent;
 
 UCLASS()
 class CRYSTALDELIVERYRUN_API ACDRDeliveryBase : public AActor
@@ -29,6 +31,17 @@ protected:
 		const FHitResult& SweepResult);
 
 private:
+	
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastDeliveryEffect();
+
+	void HideDeliveryLight();
+
+	UPROPERTY(VisibleAnywhere, Category = "Base")
+	TObjectPtr<UPointLightComponent> DeliveryLight;
+
+	FTimerHandle DeliveryLightTimer;
+	
 	UPROPERTY(VisibleAnywhere, Category = "Base")
 	TObjectPtr<UBoxComponent> CollisionBox;
 
