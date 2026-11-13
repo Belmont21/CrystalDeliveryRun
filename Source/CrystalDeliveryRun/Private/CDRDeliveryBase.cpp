@@ -118,4 +118,3 @@ void ACDRDeliveryBase::HideDeliveryLight()
         DeliveryLight->SetVisibility(false);
     }
 }
-

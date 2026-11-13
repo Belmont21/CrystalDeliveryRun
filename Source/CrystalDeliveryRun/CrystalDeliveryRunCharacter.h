@@ -130,4 +130,3 @@ private:
    TObjectPtr<UCDRGameHUDWidget> GameHUDWidget;
 };
 
-

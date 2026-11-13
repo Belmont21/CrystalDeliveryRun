@@ -2,6 +2,8 @@
 
 #include "CrystalDeliveryRunPlayerController.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+#include "CDRCrystal.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Multiplayer/CDRMatchGameState.h"
@@ -70,7 +72,19 @@ void ACDRMatchGameMode::UpdateRoundTimer()
    MatchGameState->OnRemainingTimeChanged.Broadcast(
       MatchGameState->RemainingTime);
 
-   if (MatchGameState->RemainingTime <= 0)
+   bool bQuedanCristales = false;
+
+   for (TActorIterator<ACDRCrystal> It(GetWorld()); It; ++It)
+   {
+      if (IsValid(*It))
+      {
+         bQuedanCristales = true;
+         break;
+      }
+   }
+
+   if (MatchGameState->RemainingTime <= 0 || !bQuedanCristales)
+
    {
       MatchGameState->RemainingTime = 0;
 
@@ -284,6 +298,3 @@ void ACDRMatchGameMode::CalculateWinners()
       }
    }
 }
-
-
-

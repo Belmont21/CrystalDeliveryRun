@@ -400,4 +400,3 @@ void UCDRGameHUDWidget::HandleStartClicked()
       PlayerController->ServerRequestStartRound();
    }
 }
-
